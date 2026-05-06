@@ -26,3 +26,4 @@ src/scrapers/__pycache__/
 Thumbs.db
 reports/
 reports/
+static/dashboard.html
