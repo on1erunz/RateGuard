@@ -1,0 +1,45 @@
+search:
+  mode: city
+  city: 深圳
+  coords:
+    lat: 22.5362
+    lng: 113.9514
+    radius_km: 5
+
+competitors:
+  target_platforms: [ctrip]
+  max_hotels: 20
+  stay_delay_min: 0.5
+  max_retries: 3
+  max_delay: 10
+
+hotel:
+  default_base_price: 300
+  checkin_date: ""            # "" = today + 14d
+  room_nights: 1
+
+rules:
+  undercut_max_pct: 0.30
+  min_price_abs: 300
+  gap_threshold_pct: 30
+
+notifications:
+  lark:
+    enabled: false
+    webhook: ""
+  email:
+    enabled: false
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    smtp_user: ""
+    smtp_pass: ""
+    from_addr: ""
+    to_addr: ""
+
+scraper:
+  headless: true
+  user_agent: ""
+  timeout_s: 30
+  screenshot_dir: ""
+  debug_dir: ""
+  persist_path: ./db/rateguard.db
