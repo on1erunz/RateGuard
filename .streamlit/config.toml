@@ -1,0 +1,8 @@
+[theme]
+font = "DroidSansFallbackFull, Noto Sans CJK SC, PingFang SC, Microsoft YaHei, sans-serif"
+headingFont = "DroidSansFallbackFull, Noto Sans CJK SC, PingFang SC, Microsoft YaHei, sans-serif"
+baseFontSize = 14
+
+[theme.sidebar]
+font = "DroidSansFallbackFull, Noto Sans CJK SC, PingFang SC, Microsoft YaHei, sans-serif"
+headingFont = "DroidSansFallbackFull, Noto Sans CJK SC, PingFang SC, Microsoft YaHei, sans-serif"
