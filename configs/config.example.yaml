@@ -1,0 +1,54 @@
+# Copy this file to configs/config.yaml and replace every placeholder.
+
+search:
+  mode: city
+  city: "Your city"
+  coords:
+    lat: 0.0
+    lng: 0.0
+    radius_km: 5
+
+competitors:
+  target_platforms: [ctrip]
+  max_hotels: 20
+  stay_delay_min: 0.5
+  max_retries: 3
+  max_delay: 10
+
+hotel:
+  default_base_price: 300
+  checkin_date: ""
+  room_nights: 1
+
+rules:
+  undercut_max_pct: 0.30
+  min_price_abs: 300
+  gap_threshold_pct: 30
+
+notifications:
+  lark:
+    enabled: false
+    webhook: ""
+
+scraper:
+  headless: true
+  persist_path: ./db/rateguard.db
+
+ctrip_mvp:
+  storage_state: ./.secrets/ctrip_state.json
+  raw_capture_dir: ./output/playwright/ctrip
+  timeout_s: 45
+  alert_threshold_yuan: 10
+  meal_filter: no_breakfast
+  targets:
+    - id: "YOUR_OWN_HOTEL_ID"
+      name: "My Hotel"
+      role: own
+      url: "https://hotels.ctrip.com/hotels/YOUR_OWN_HOTEL_ID.html"
+    - id: "COMPETITOR_HOTEL_ID"
+      name: "Competitor Hotel"
+      url: "https://hotels.ctrip.com/hotels/COMPETITOR_HOTEL_ID.html"
+
+dashboard:
+  history_days: 30
+  previous_day_clear_hour: 12

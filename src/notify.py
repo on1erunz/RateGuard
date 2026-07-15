@@ -6,6 +6,7 @@ notify.py — RateGuard 多渠道告警通知
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import requests
@@ -20,9 +21,16 @@ logger = logging.getLogger("rateguard")
 # ══════════════════════════════════════════════════════════════════════════
 
 def send_alert(title: str, body: str, level: str = "warning") -> None:
+    # Ctrip price alerts carry a direction marker for quick scanning in Feishu.
+    if "[\u643a\u7a0b\u4ef7\u683c\u4e0b\u964d]" in title:
+        title = f"⬇️ {title}"
+    elif "[\u643a\u7a0b\u4ef7\u683c\u4e0a\u6da8]" in title:
+        title = f"⬆️ {title}"
     """按平台分发告警：飞书 → 企业微信 → 钉钉 → 邮件"""
     # 1. 飞书机器人
-    lark = config.get("notifications.lark") or {}
+    lark = dict(config.get("notifications.lark") or {})
+    # The webhook is deliberately supplied through .env, not config.yaml.
+    lark["webhook"] = lark.get("webhook") or os.environ.get("RATEGUARD_LARK_WEBHOOK", "")
     if _enabled(lark) and lark.get("webhook"):
         try:
             _send_lark(lark["webhook"], title, body)

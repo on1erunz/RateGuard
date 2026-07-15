@@ -14,7 +14,11 @@ src/scrapers/__pycache__/
 # Env
 .env
 .env.*
+!.env.example
 !configs/config.example.yaml
+
+# Per-user monitor targets and local credentials
+configs/config.yaml
 
 # IDE
 .idea/
@@ -27,3 +31,6 @@ Thumbs.db
 reports/
 reports/
 static/dashboard.html
+output/
+.secrets/
+.playwright-cli/

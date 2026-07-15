@@ -48,6 +48,12 @@ from src.rules import PriceEvent, run_checks
 # except ImportError:
 #     _CTRIP_AVL = False
 
+(_ROOT / "logs").mkdir(exist_ok=True)
+
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

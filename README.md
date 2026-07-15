@@ -1,141 +1,152 @@
-# RateGuard — 酒店 OTA 价格守护助手
+# RateGuard
 
-> **单脚本，零成本，不睡不累的价格哨兵。**
+[简体中文](README.zh-CN.md)
 
-RateGuard 是一款开源的酒店 OTA 价格监控工具。输入城市/坐标，自动搜索附近酒店、抓取价格、比对规则、异常告警。适用于中小酒店运营者、收益经理和任何需要盯价格的人。
+RateGuard is a local-first hotel price monitoring tool for fixed Ctrip hotel-detail URLs. It opens the normal Ctrip website in Playwright using a user-created login session, extracts available **room type + nightly price** plans, stores observations locally, and sends Feishu/Lark alerts when a comparable price moves by a configured threshold.
 
----
+It is designed for monitoring properties you operate or are authorized to monitor. It is not an official Ctrip tool and does not provide automated booking, price changes, API replay, or bypass mechanisms.
 
-## 快速开始
+## What it does
 
-### 前置条件
+- Monitors fixed Ctrip hotel-detail URLs.
+- Defaults to no-breakfast plans; meal and cancellation terms are not stored or shown.
+- Saves local SQLite history and raw response artifacts.
+- Compares the same hotel, room plan, and check-in date against the previous run.
+- Sends Feishu/Lark alerts for price changes at or above the configured amount, plus one no-change or error status per completed monitoring cycle.
+- Runs on a Windows schedule: hourly for current-day monitoring and twice daily for future-date anchors.
+- Exports a sanitized dashboard snapshot plus a normalized future-room-price JSON sheet for price planning.
 
-- **Python ≥ 3.10**
-- **Chrome / Chromium**（Playwright 自动下载）
+## Architecture
 
-### 5 分钟跑起来
+```text
+Windows PC (scheduled Playwright collection)
+  ├─ local SQLite + raw captures
+  ├─ Feishu/Lark price alerts
+  └─ sanitized dashboard.json ──> Vercel Blob ──> Vercel dashboard
+```
 
-```bash
-# 1. 克隆
-git clone https://github.com/Docking666/RateGuard.git
+The collector stays on your own computer because it uses your browser login state. The dashboard is optional and can be hosted separately.
+
+## Requirements
+
+- Windows 10/11 (the scheduler scripts use Windows Task Scheduler)
+- Python 3.10+
+- Node.js 20+ and `npx` (only for publishing dashboard data to Vercel)
+- A Ctrip account that can log in normally in a browser
+
+## Initial setup
+
+```powershell
+git clone https://github.com/YOUR_ACCOUNT/RateGuard.git
 cd RateGuard
 
-# 2. 安装依赖（自动下载浏览器）
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 playwright install chromium
 
-# 3. 复制配置模板
-cp configs/config.example.yaml configs/config.yaml
-vim configs/config.yaml   # 填入你的配置
-
-# 4. 跑一次
-python -m src.main
+Copy-Item configs\config.example.yaml configs\config.yaml
+Copy-Item .env.example .env
 ```
 
-搞定。prices 表里已经有数据。
+Edit `configs/config.yaml`:
 
----
+1. Add your hotel and competitor Ctrip URLs under `ctrip_mvp.targets`.
+2. Mark your own property with `role: own` to show its lowest price as the dashboard reference price.
+3. Set `alert_threshold_yuan` and the no-breakfast filter as required.
 
-## 工作流
+Edit `.env` only if Feishu/Lark alerts are required:
 
-```
-config.yaml  →  输入监控目标（城市/坐标/底价/规则）
-      ↓
-main.py     →  Playwright 搜索 OTA → 抓取酒店价格
-      ↓
-database.py →  存入 SQLite（price_log + hotel、room_type 基准表）
-      ↓
-rules.py    →  规则引擎判定异常 → 触发告警
-      ↓
-notify.py   →  飞书机器人通知（推荐）/ 邮件
-      ↓
-report.py   →  生成静态 dashboard HTML（可选）
+```dotenv
+RATEGUARD_LARK_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/...
 ```
 
----
+## Log in and run once
 
-## 配置说明
+```powershell
+# Opens a browser. Complete the normal Ctrip login, then follow the prompt.
+python -m src.ctrip_mvp --login
 
-`configs/config.yaml` 核心字段：
-
-```yaml
-search:
-  mode: city        # city | coords
-  city: "深圳市"    # city 模式：城市名
-  coords:            # coords 模式：中心坐标 + 半径
-    lat: 22.5362
-    lng: 113.9514
-    radius_km: 5
-
-hotel:
-  default_base_price: 300   # 默认底价（所有房型兜底）
-  checkin_date: "2026-05-20"
-  checkout_date: "2026-05-25"
-
-competitors:
-  target_platforms:          # 爬取哪些 OTA，按优先级排列
-    - ctrip
-    - meituan
-    - fliggy
-  max_hotels: 20             # 每次最多抓取多少家酒店
-
-rules:
-  - type: "undercut_check"   # 始终确认与竞对的最低价差距
-    max_undercut_pct: 30     # 允许低于竞对最多 30%（百分比）
-    min_price_abs: 300       # 绝对底价：不低于 300 元
-  - type: "gap_alert"
-    gap_threshold: 20        # 竞对价格偏差超过 20 元时告警
-
-notifications:
-  lark:
-    enabled: false           # 暂未配置 true
-    webhook: "https://open.larksuite.com/open-apis/bot/v2/hook/xxx"
-  email:
-    enabled: false
-    smtp_host: "smtp.gmail.com"
-    smtp_port: 587
-    from_addr: "your@gmail.com"
-    smtp_pass: "your-app-password"
-    to_addr: "manager@example.com"
+# Collect all configured hotels for one check-in date.
+python -m src.ctrip_mvp --checkin 2026-07-20
 ```
 
-说明：v1.0 不配置通知也能正常爬取数据。先通数据流，再补告警。
+The local login state is saved in `.secrets/ctrip_state.json`. It is deliberately ignored by Git. If the Ctrip session expires, run the login command again.
 
----
+## Schedule
 
-## 数据流
+Install the Windows scheduled tasks after the first successful collection:
 
-| 阶段 | 说明 | 预期输出 |
-|---|---|---|
-| ① 爬取 | Playwright 搜索 OTA 酒店列表 → 逐页提取名称/价格/房型 | 原始价格日志 |
-| ② 清洗 | 去重 + 缺失值填充 + 日期标准化 | 结构化的 price_log |
-| ③ 检测 | 规则引擎检查：底价保护、竞对差距、异常跳变 | 告警事件 |
-| ④ 通知 | 飞书机器人 / 邮件推送告警 | 飞书消息或邮件 |
-| ⑤ 看板 | 生成单文件 dashboard.html | 浏览器打开即看 |
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install_schedule.ps1
+```
 
----
+The supplied schedule is:
 
-## 安全与合规
+| Time | Work |
+| --- | --- |
+| 08:00–23:00 | Hourly collection for the current check-in date |
+| 00:00 | Future anchors: tomorrow, this Friday, next Monday, next Friday |
+| 12:00 | Same future-anchor collection |
 
-> ⚠️ **RateGuard 仅用于学习与技术研究。**
->
-> - 使用时请遵守 OTA 服务条款和 robots.txt
-> - 禁止将收集到的酒店价格数据用于商业竞争或其他不符合法律法规的用途
-> - 本项目提供「价格监测与自我提醒」能力，不提供自动下单、自动改价功能
-> - 使用者自行承担合规风险
+At 12:00, the previous check-in date is removed from the **current-price** view but remains in local history and the dashboard history tab. The PC must be powered on, connected to the network, and the scheduled-task user must remain signed in.
 
----
+When no room-plan price changes meet `alert_threshold_yuan`, Feishu receives one **No price changes** completion message. The four future anchor dates are summarized in one message. If a cycle has collection errors, Feishu receives an error status instead.
 
-## 路线图
+## Vercel dashboard (optional)
 
-- [x] **v1.0-MVP·阶段①** — 基础框架 + 配置文件 struct（当前）
-- [ ] **v1.0-MVP·阶段②** — 按坐标/城市搜索 + prices 表有数据
-- [ ] **v1.0-MVP·阶段③** — 规则引擎 + 飞书告警
-- [ ] **v1.1** — GitHub Actions 自动定时调度
-- [ ] **v1.2** — Dashboard HTML 可视化看板
+Deploy the dashboard site once:
 
----
+```powershell
+cd vercel-dashboard
+npm install
+npx vercel --prod
+```
 
-## 许可
+Create and connect a Vercel Blob store for the Vercel project, then copy `vercel-dashboard/.env.example` to `vercel-dashboard/.env.local` and supply the Blob read/write token. Keep that file private.
 
-MIT License — 自由使用，自由修改，不负责你的操作。
+After each local collection, publish the sanitized dashboard snapshot:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish_dashboard.ps1
+```
+
+The scheduled job calls the same publishing script automatically. Uploads time out after 90 seconds so a stalled dashboard sync cannot block later collections. The dashboard header includes **Download future room prices JSON**, which downloads the latest future-date sheet (`/api/future-room-prices`). It is grouped by check-in date and hotel, then lists every collected no-breakfast room plan with its nightly price, availability, and update time.
+
+## Data and safety
+
+Never commit or publish these files:
+
+- `.env` and `vercel-dashboard/.env.local`
+- `configs/config.yaml`
+- `.secrets/`
+- `db/`, `logs/`, and `output/`
+
+Use the provided `*.example` files as templates. If a token, webhook, or login state is accidentally exposed, revoke or rotate it immediately.
+
+The project exports only display-safe fields to the dashboard. Raw Ctrip responses and browser captures stay local.
+
+## Useful commands
+
+```powershell
+# Export a new local dashboard snapshot from SQLite
+python -m src.dashboard_export
+
+# Run the scheduled logic manually
+python -m src.scheduled_run --mode hourly
+python -m src.scheduled_run --mode anchors
+
+# Start the local Streamlit dashboard
+streamlit run gui/app.py
+```
+
+## Limitations
+
+- Ctrip may change its website, login flow, response format, or availability rules.
+- Collection requires a valid login session and can require manual re-login.
+- The current implementation supports fixed Ctrip hotel URLs. Meituan collection is intentionally out of scope.
+- You are responsible for complying with applicable law and the platform's terms.
+
+## License
+
+[MIT](LICENSE)

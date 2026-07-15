@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RateGuard 酒店价格监控</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">RATEGUARD</p>
+        <h1>酒店房型价格监控</h1>
+        <p id="updated-at" class="muted">正在读取数据…</p>
+      </div>
+      <div class="header-actions">
+        <button id="download-future-prices" class="secondary" type="button">下载远期房型价格 JSON</button>
+        <button id="refresh" type="button">刷新数据</button>
+      </div>
+    </header>
+
+    <section id="filters" class="filters" aria-label="筛选条件">
+      <label>平台<select id="platform-filter"></select></label>
+      <label>酒店<select id="hotel-filter"></select></label>
+      <label>入住日期<select id="date-filter"></select></label>
+    </section>
+
+    <nav class="tabs" aria-label="看板页面">
+      <button class="active" data-tab="current" type="button">当前价格</button>
+      <button data-tab="history" type="button">历史记录</button>
+      <button data-tab="status" type="button">采集状态</button>
+    </nav>
+
+    <section id="current" class="tab-panel active">
+      <div id="metrics" class="metrics"></div>
+      <section class="panel">
+        <h2>本店引流价与竞对最低可售房型价</h2>
+        <p id="active-window" class="muted"></p>
+        <div id="lowest-prices" class="bars"></div>
+      </section>
+      <section class="panel">
+        <h2>当前房型价格</h2>
+        <div class="table-wrap"><table id="current-table"></table></div>
+      </section>
+    </section>
+
+    <section id="history" class="tab-panel">
+      <section class="panel">
+        <h2>近 <span id="history-days"></span> 天历史记录</h2>
+        <div class="table-wrap"><table id="history-table"></table></div>
+      </section>
+    </section>
+
+    <section id="status" class="tab-panel">
+      <section class="panel">
+        <h2>售罄、异常与待人工核验</h2>
+        <div class="table-wrap"><table id="status-table"></table></div>
+      </section>
+    </section>
+
+    <p id="error" class="error" role="alert" hidden></p>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>

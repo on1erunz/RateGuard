@@ -22,6 +22,29 @@ from typing import Any
 
 import yaml
 
+
+def _load_project_dotenv() -> None:
+    """Load simple KEY=VALUE pairs from the project-local .env file.
+
+    Secrets stay outside YAML and are never copied to the repository config.
+    Existing process environment variables take precedence.
+    """
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if not env_path.is_file():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_project_dotenv()
+
 # ── 搜索路径 ─────────────────────────────────────────────────────────────
 
 _SEARCH_PATHS = [
@@ -29,8 +52,8 @@ _SEARCH_PATHS = [
     if "--config" in sys.argv and sys.argv.index("--config") + 1 < len(sys.argv)
     else None,
     os.environ.get("RATEGUARD_CONFIG"),
-    Path(__file__).resolve().parents[2] / "configs" / "config.yaml",
-    Path(__file__).resolve().parents[2] / "configs" / "config.example.yaml",
+    Path(__file__).resolve().parents[1] / "configs" / "config.yaml",
+    Path(__file__).resolve().parents[1] / "configs" / "config.example.yaml",
 ]
 
 _DEFAULTS = {
